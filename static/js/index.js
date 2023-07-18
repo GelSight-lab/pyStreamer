@@ -3,11 +3,12 @@
 
 // Button call back functions
 $('a#btn-ref').on('click', function(e) {
-        // e.preventDefault();
+        e.preventDefault();
         console.log("Refresh button pressed.");
         $.getJSON('/btn_refresh',
             function(data) {
         });
+        location.reload();
         return false;
 });
 
