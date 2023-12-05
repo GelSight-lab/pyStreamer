@@ -7,8 +7,7 @@ import numpy as np
 import time
 import cv2
 
-import picamera
-from picamera.array import PiRGBArray
+import picamera2 
 
 # initialize the output frame and a lock used to ensure thread-safe
 lock = threading.Lock()
@@ -25,20 +24,23 @@ mode_id = 0
 # initialize a flask object
 app = Flask(__name__)
 
-camera = picamera.PiCamera()
-camera.resolution = (640, 480)
-camera.framerate = 25
-camera.awb_gains = (1.0, 1.5)  # red, blue
-camera.awb_mode = "off"
-camera.brightness = 50
+picam2 = picamera2.PiCamera2()
+# picam2.resolution = (640, 480)
+# picam2.framerate = 25
+mode = picam2.sensor_modes[0]
+video_config = picam2.create_video_configuration(main={"size": mode['size']}, sensor={'output_size': mode['size'], 'bit_depth': mode['bit_depth']})
+picam2.configure(video_config)
+picam2.set_controls({"ExposureTime": 10000, "AnalogueGain": 1.0})
+picam2.set_controls({"AwbEnable": False, "Brightness": 0})  # brightness value: from -1 to 1
+picam2.set_controls({"ColourGains": (1.0, 1.5)}) # corlor gains range: 0.0-32.0
+picam2.set_controls({"ExposureValue": 5.0}) # between -8 and 8
 # Need to set ISO prior to fixing exposure mode
-camera.iso = 400
-camera.exposure_compensation = 15 # between -25 and 25
-stream = PiRGBArray(camera, size=(640, 480))
+# picam2.iso = 400
+picam2.start()
+image = picam2.capture_array("main")
+# stream = PiRGBArray(picam2, size=(640, 480))
 
-time.sleep(1.0)
-camera.exposure_mode = "off"
-time.sleep(1.0)
+# encoder = H264Encoder(1000000)
 
 last_time = time.time()
 frame_count = 0
@@ -61,10 +63,10 @@ def process():
     # lock variables
     global init_frame, output_frame, lock, last_time, refresh_requested, FPS, frame_count, mode_id
     # loop over frames from the video stream
-    for frame in camera.capture_continuous(stream, format="bgr", use_video_port=True):
-        stream.truncate()
-        stream.seek(0)
-        image = stream.array
+    for frame in picam2.capture_continuous(image, format="bgr", use_video_port=True):
+        # image.truncate()
+        # stream.seek(0)
+        # image = stream.array
 
         frame_count += 1
         if (frame_count >= 5):
